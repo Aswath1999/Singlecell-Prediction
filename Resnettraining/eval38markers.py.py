@@ -181,7 +181,7 @@ class NativeResNet18scratch(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # ❌ NO ImageNet pretraining
+        #  NO ImageNet pretraining
         base = resnet18(weights=None)
         
         # -------- Instance Normalization for 38-channel input --------
@@ -203,7 +203,7 @@ class NativeResNet18scratch(nn.Module):
             bias=False
         )
 
-        # ✅ Proper initialization for scratch training
+        #  Proper initialization for scratch training
         nn.init.kaiming_normal_(
             self.first_conv.weight,
             mode="fan_out",
@@ -238,59 +238,6 @@ class NativeResNet18scratch(nn.Module):
         x = x.mean(dim=(2, 3))   # global average pooling
         return self.head_major(x), self.head_center(x)
 
-# class NativeResNet18(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         base = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-        
-#         for m in base.modules():
-#             if isinstance(m, nn.ReLU):
-#                 m.inplace = False
-        
-
-#         old = base.conv1
-#         self.first_conv = nn.Conv2d(
-#             NUM_INPUT_CHANNELS,
-#             old.out_channels,
-#             kernel_size=old.kernel_size,
-#             stride=old.stride,
-#             padding=old.padding,
-#             bias=False
-#         )
-
-#         # ---- Initialize from pretrained RGB conv1 ----
-#         with torch.no_grad():
-#             w = old.weight.mean(dim=1, keepdim=True)
-#             self.first_conv.weight.copy_(
-#                 w.repeat(1, NUM_INPUT_CHANNELS, 1, 1)
-#             )
-
-#         self.stem = nn.Sequential(
-#             self.first_conv,
-#             base.bn1,
-#             base.relu,
-#             base.maxpool
-#         )
-
-#         self.backbone = nn.Sequential(
-#             base.layer1,
-#             base.layer2,
-#             base.layer3,
-#             base.layer4
-#         )
-
-#         d = base.fc.in_features
-#         self.head_major = nn.Linear(d, NUM_CLASSES)
-#         self.head_center = nn.Linear(d, NUM_CLASSES)
-
-#     def forward(self, x):
-#         x = self.stem(x)
-#         x = self.backbone(x)
-#         x = x.mean(dim=(2, 3))   # global average pooling
-#         return self.head_major(x), self.head_center(x)
-    
-    
-    
     
 # ============================================================
 # MAIN

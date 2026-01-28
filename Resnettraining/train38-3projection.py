@@ -168,10 +168,10 @@ class NativeResNet18scratch(nn.Module):
     def __init__(self):
         super().__init__()
 
-        # ❌ NO ImageNet pretraining
+        # NO ImageNet pretraining
         base = resnet18(weights=None)
 
-        # 🔴 Disable inplace ReLU (important for explainability & hooks)
+        #  Disable inplace ReLU (important for explainability & hooks)
         for m in base.modules():
             if isinstance(m, nn.ReLU):
                 m.inplace = False
@@ -228,52 +228,6 @@ class NativeResNet18scratch(nn.Module):
         x = self.backbone(x)
         x = x.mean(dim=(2, 3))   # global average pooling
         return self.head_major(x), self.head_center(x)
-
-# class NativeResNet18(nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         base = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
-
-#         old = base.conv1
-#         self.first_conv = nn.Conv2d(
-#             NUM_INPUT_CHANNELS,
-#             old.out_channels,
-#             kernel_size=old.kernel_size,
-#             stride=old.stride,
-#             padding=old.padding,
-#             bias=False
-#         )
-
-#         # ---- Initialize from pretrained RGB conv1 ----
-#         with torch.no_grad():
-#             w = old.weight.mean(dim=1, keepdim=True)
-#             self.first_conv.weight.copy_(
-#                 w.repeat(1, NUM_INPUT_CHANNELS, 1, 1)
-#             )
-
-#         self.stem = nn.Sequential(
-#             self.first_conv,
-#             base.bn1,
-#             base.relu,
-#             base.maxpool
-#         )
-
-#         self.backbone = nn.Sequential(
-#             base.layer1,
-#             base.layer2,
-#             base.layer3,
-#             base.layer4
-#         )
-
-#         d = base.fc.in_features
-#         self.head_major = nn.Linear(d, NUM_CLASSES)
-#         self.head_center = nn.Linear(d, NUM_CLASSES)
-
-#     def forward(self, x):
-#         x = self.stem(x)
-#         x = self.backbone(x)
-#         x = x.mean(dim=(2, 3))   # global average pooling
-#         return self.head_major(x), self.head_center(x)
 
 # ================= TRAIN =================
 def main():
@@ -353,43 +307,7 @@ persistent_workers=False),
         if mean_recall > best:
             best = mean_recall
             torch.save(model.state_dict(), BEST_PATH)
-            print(f"✅ Saved best model ({best:.3f})")
+            print(f" Saved best model ({best:.3f})")
 
     print("Training complete.")
     
-        # ================= TEST EVALUATION =================
-    # print("\n=== TEST EVALUATION (BEST MODEL) ===")
-
-    # # Load best model
-    # model.load_state_dict(torch.load(BEST_PATH, map_location=DEVICE))
-    # model.eval()
-
-    # y_true, y_pred = [], []
-
-    # with torch.no_grad():
-    #     for x, y_major, _ in tqdm(loaders["test"], desc="TEST"):
-    #         x = x.to(DEVICE)
-    #         logits, _ = model(x)
-    #         preds = logits.argmax(1).cpu().numpy()
-
-    #         y_pred.append(preds)
-    #         y_true.append(y_major.numpy())
-
-    # y_true = np.concatenate(y_true)
-    # y_pred = np.concatenate(y_pred)
-
-    # # Metrics
-    # test_acc = accuracy_score(y_true, y_pred)
-    # test_recall = recall_dict(y_true, y_pred)
-    # test_cm = confusion_matrix(y_true, y_pred)
-
-    # print(f"\nTEST Accuracy: {test_acc:.4f}")
-    # print("TEST Recall per class:")
-    # for k, v in test_recall.items():
-    #     print(f"  {k:12s}: {v:.4f}")
-
-    # print("\nTEST Confusion Matrix (rows=true, cols=pred):")
-    # print(test_cm)
-
-if __name__ == "__main__":
-    main()
