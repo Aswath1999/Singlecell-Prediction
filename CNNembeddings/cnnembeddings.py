@@ -8,6 +8,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18, ResNet18_Weights
+import torchvision.models as models
+import torch.nn as nn
+
+
 import zarr
 import gc
 
@@ -63,8 +67,7 @@ class CellCNN(nn.Module):
         return self.fc(x)
     
     
-import torchvision.models as models
-import torch.nn as nn
+
 
 class ConvNeXtEmbeddingNet(nn.Module):
     def __init__(self, out_dim=1024):
@@ -169,14 +172,9 @@ class NativeResNet18(nn.Module):
 
         return self.head_major(emb), self.head_center(emb)
 
-
-
-    
 class NativeResNet18scratch(nn.Module):
     def __init__(self, emb_dim=512):
         super().__init__()
-        from torchvision.models import resnet18
-
 
         base = resnet18(weights=None)
         # base = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
@@ -257,7 +255,7 @@ class MultiHeadResNet50(nn.Module):
 
         self.adapter = MarkerAwareAdapter()
 
-        # ❄️ Freeze early layers (safe + fast)
+        #  Freeze early layers (safe + fast)
         for layer in [base.conv1, base.bn1, base.layer1]:
             for p in layer.parameters():
                 p.requires_grad = False
@@ -300,7 +298,6 @@ class MultiHeadResNet18(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
 
-        from torchvision.models import resnet18, ResNet18_Weights
         base = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
 
         # self.adapter = MarkerAwareAdapter()
@@ -320,17 +317,9 @@ class MultiHeadResNet18(nn.Module):
             nn.Conv2d(32, 3, kernel_size=1, bias=False),
         )
         
-        
-        # self.adapter = nn.Sequential(
-        #     nn.Conv2d(38, 32, kernel_size=1),
-        #     nn.BatchNorm2d(32),
-        #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(32, 3, kernel_size=1),
-        # )
-
 
         # --------------------------------------------------
-        # ❄️ Freeze early ResNet layers
+        #  Freeze early ResNet layers
         # --------------------------------------------------
         for layer in [base.conv1, base.bn1, base.layer1]:
             for p in layer.parameters():
@@ -457,18 +446,9 @@ def process_patient(zpath, dfp, model, out_csv, write_header):
             if len(sdf) == 0:
                 continue
 
-            # tile = torch.from_numpy(
-            #     z[:, ty:ty+TILE_SIZE, tx:tx+TILE_SIZE]
-            # ).to(DEVICE).half()
-            # tile = torch.from_numpy(
-            #     z[:, ty:ty+TILE_SIZE, tx:tx+TILE_SIZE]
-            # ).to(DEVICE).half()
-            
             tile_np = z[:, ty:ty+TILE_SIZE, tx:tx+TILE_SIZE]
             tile = torch.from_numpy(tile_np.astype(np.float32)).to(DEVICE).half()
             
-            # tile = robust_minmax_tile(tile)   #  NEW
-
             centers = torch.stack([
                 torch.tensor(sdf.cx.values - tx),
                 torch.tensor(sdf.cy.values - ty)
@@ -480,10 +460,7 @@ def process_patient(zpath, dfp, model, out_csv, write_header):
 
                 patches = extract_patches_fast(tile, sub_centers)
                 patches = torch.arcsinh(patches / ARCSINH_COFACTOR)
-                # patches = fast_norm(patches)
-
-                # emb = model(patches).float().cpu().numpy()
-                
+         
                 emb = model(patches, return_embedding=True)
                 emb = emb.float().cpu().numpy()  # (B, 512)
 
@@ -565,6 +542,8 @@ class MarkerAwareAdapter(nn.Module):
         x = self.mix(x)
         x = x * self.attn(x)   # marker weighting
         return self.to_rgb(x)
+    
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -591,10 +570,7 @@ def main():
     if os.path.exists(args.out_csv):
         os.remove(args.out_csv)
 
-    # model = CellCNN(out_dim=OUT_DIM).to(DEVICE).half().eval()
-    OUT_DIM = 512
-    # model = ConvNeXtEmbeddingNet(out_dim=OUT_DIM).to(DEVICE).half().eval()
-    
+    OUT_DIM = 512    
     NUM_CLASSES = 3
     EMB_DIM = 512
     # EMB_DIM = 2048 # resnet 50  
